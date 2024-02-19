@@ -8,4 +8,7 @@ h1 {font-family: 'Roboto Condensed', sans-serif; color:white}
 
 h2 {text-align: center}
 
-.table{text-align:center;}
+.table{text-align:center;
+    width: 100%;
+    border-collapse: collapse;
+    border: 3px solid white;}
