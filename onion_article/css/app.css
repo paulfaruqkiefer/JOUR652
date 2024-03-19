@@ -1,0 +1,27 @@
+.contentContainer {
+  width:100%;
+  font-size: 24px;
+  padding:40px;
+  background-color:#009933;
+  color:#FFF;
+  margin: auto;
+  font-family: "Roboto", sans-serif;
+  font-weight:bold;
+  text-align: center;
+}
+
+.subtitle {
+  float: center;
+  font-size: 13px;
+  font-family: "Roboto", sans-serif;
+}
+
+.text {
+  padding: 20px;
+  line-height: 30px;
+  margin:auto;
+}
+
+.reptar_image {
+  margin-top: 25px;
+}
