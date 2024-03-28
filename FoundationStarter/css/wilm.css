@@ -1,0 +1,14 @@
+.contentContainer {
+	width:"100%";
+	padding:20px;
+	margin-bottom: 40px;
+  background:#e9cb20;
+	border: solid 3px #eee;
+  border-radius:10px;
+	text-align: center;
+	color: white;
+}
+
+.timeline {
+	margin: 20px;
+}
