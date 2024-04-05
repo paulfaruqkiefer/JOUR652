@@ -36,7 +36,7 @@ body {
 /* Adjustments for better spacing */
 .topHeader {
     position: relative; /* Ensure proper positioning of its contents */
-    padding-top: 100px; /* Adjust as needed for proper spacing */
+    padding-top: 100px;
 }
 
 .text-container {
@@ -80,7 +80,7 @@ figcaption {
     margin: 0 auto; /* Center the video horizontally */
     display: block; /* Ensure block-level display */
     text-align: center; /* Center the content inside the block */
-    width: 80%; /* Adjust width as needed */
+    width: 80%;
 }
 
 .body_image {
