@@ -44,10 +44,6 @@ body {
     margin-left: 15px; /* Adjust the left margin to match the other text containers */
 }
 
-.large-4.medium-4.small-12.cell {
-    margin-top: 20px;
-    margin-left: 20px;
-}
 
 /* Text styles */
 
@@ -65,7 +61,7 @@ h1, h5, h6 {
 figcaption {
     font-style: italic;
     font-size: 0.8em;
-    color: #888;
+    color: #000; /* Change color to black */
     text-align: center;
     margin-top: 5px; /* Add some space between the image and the caption */
 }
