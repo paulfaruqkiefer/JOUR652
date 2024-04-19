@@ -1,0 +1,269 @@
+---
+title: "navient_data"
+author: "Paul Kiefer"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(R.utils)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(ropensecretsapi)
+library(httr)
+library(xml2)
+library(jsonlite)
+library(httr)
+library(rvest)
+library(tidycensus)
+library(purrr)
+```
+
+```{r}
+navient_complaints <- read_csv("datasets/navient_complaints.csv", guess_max = 39,000)   
+```
+
+```{r}
+# Set the first row as column names
+colnames(navient_complaints) <- unlist(navient_complaints[1, ])
+
+# Remove the first row
+navient_complaints <- slice(navient_complaints, -1)
+```
+
+```{r}
+# Convert column names to lower case and replace spaces with underscores
+colnames(navient_complaints) <- gsub(" ", "_", tolower(colnames(navient_complaints)))
+
+colnames(navient_complaints) <- gsub("-", "_", colnames(navient_complaints))
+```
+
+```{r}
+# Convert date_received column to Date type
+navient_complaints$date_received <- as.Date(navient_complaints$date_received, format = "%m/%d/%y")
+```
+
+```{r}
+library(dplyr)
+
+# Create a new column "region" based on values in the "state" column
+navient_complaints <- navient_complaints %>%
+  mutate(region = case_when(
+    state %in% c("AK", "AZ", "CA", "CO", "HI", "ID", "NM", "NV", "MT", "OR", "UT", "WA", "WY") ~ "West",
+    state %in% c("IA", "IL", "KS", "SD", "ND", "MN", "OH", "IN", "MO", "WI", "MI") ~ "Midwest",
+    state %in% c("DE", "MD", "DC", "VA", "NC", "WV", "KY", "TN", "SC", "GA", "FL", "AL", "MS", "LA", "AR", "OK", "TX") ~ "South",
+    state %in% c("PA", "NJ", "NY", "CT", "MA", "RI", "VT", "NH", "ME") ~ "Northeast",
+    TRUE ~ NA_character_  # Default case
+  ))
+```
+
+
+```{r}
+# Extract month from date_received column
+navient_complaints$month <- format(navient_complaints$date_received, "%Y-%m")
+
+# Create data frame for counting "Student loan" per unique value in the "region" column for each month
+student_loan_count <- navient_complaints %>%
+  filter(product == "Student loan") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+
+# Create data frame for counting "Credit reporting, credit repair services, or other personal consumer reports" per unique value in the "region" column for each month
+credit_reporting_count <- navient_complaints %>%
+  filter(product == "Credit reporting, credit repair services, or other personal consumer reports") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+
+# Create data frame for counting "Debt collection" per unique value in the "region" column for each month
+debt_collection_count <- navient_complaints %>%
+  filter(product == "Debt collection") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+
+# Create data frame for counting "Federal student loan servicing" per unique value in the "region" column for each month
+federal_student_loan_servicing_count <- navient_complaints %>%
+  filter(sub_product == "Federal student loan servicing") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+
+# Create data frame for counting "Non-federal student loan" per unique value in the "region" column for each month
+non_federal_student_loan_count <- navient_complaints %>%
+  filter(sub_product == "Non-federal student loan") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+
+# Create data frame for counting "Private student loan" per unique value in the "region" column for each month
+private_student_loan_count <- navient_complaints %>%
+  filter(sub_product == "Private student loan") %>%
+  group_by(region, month) %>%
+  summarise(count = n())
+```
+```{r}
+# Merge specific data frames by month and region
+merged_df <- merge(student_loan_count, credit_reporting_count, by = c("month", "region"), all = TRUE)
+merged_df <- merge(merged_df, debt_collection_count, by = c("month", "region"), all = TRUE)
+merged_df <- merge(merged_df, federal_student_loan_servicing_count, by = c("month", "region"), all = TRUE)
+merged_df <- merge(merged_df, non_federal_student_loan_count, by = c("month", "region"), all = TRUE)
+merged_df <- merge(merged_df, private_student_loan_count, by = c("month", "region"), all = TRUE)
+
+# Rename count columns to match the name of the dataframe it came from
+names(merged_df)[3:ncol(merged_df)] <- c("student_loan_count", "credit_reporting_count", "debt_collection_count", 
+                                         "federal_student_loan_servicing_count", "non_federal_student_loan_count", 
+                                         "private_student_loan_count")
+```
+
+
+```{r}
+# Replace null values in columns other than "region" with 0
+merged_df <- merged_df %>%
+  mutate_at(vars(-region), ~replace(., is.na(.), 0))
+
+# Filter out null values in the "month" column
+merged_df <- merged_df %>%
+  filter(!is.na(month))
+
+```
+
+
+
+```{r}
+west_navient <- merged_df %>%
+  filter(region == "West")
+
+midwest_navient <- merged_df %>%
+  filter(region == "Midwest")
+
+south_navient <- merged_df %>%
+  filter(region == "South")
+
+northeast_navient <- merged_df %>%
+  filter(region == "Northeast")
+
+```
+
+
+
+```{r}
+region_pop_2020 <- get_acs(geography = "region",
+              variables = c(region_pop = "B01003_001"),
+              year = 2020,
+              geometry = FALSE)
+```
+```{r}
+# Extract specific values from the "estimate" column based on values in the "NAME" column
+northeast_region <- region_pop_2020$estimate[region_pop_2020$NAME == "Northeast Region"]
+south_region <- region_pop_2020$estimate[region_pop_2020$NAME == "South Region"]
+midwest_region <- region_pop_2020$estimate[region_pop_2020$NAME == "Midwest Region"]
+west_region <- region_pop_2020$estimate[region_pop_2020$NAME == "West Region"]
+```
+
+
+
+```{r}
+west_navient <- west_navient %>%
+  mutate(
+    student_loan_count_pc_west = (student_loan_count / west_region)*1000000,
+    credit_reporting_count_pc = (credit_reporting_count / west_region)*1000000,
+    debt_collection_count_pc = (debt_collection_count / west_region)*1000000,
+    federal_student_loan_servicing_count_pc_west = (federal_student_loan_servicing_count / west_region)*1000000,
+    non_federal_student_loan_count_pc_west = (non_federal_student_loan_count / west_region)*1000000,
+    private_student_loan_count_pc_west = (private_student_loan_count / west_region)*1000000
+  )
+
+midwest_navient <- midwest_navient %>%
+  mutate(
+    student_loan_count_pc_midwest = (student_loan_count / midwest_region)*1000000,
+    credit_reporting_count_pc = (credit_reporting_count / midwest_region)*1000000,
+    debt_collection_count_pc = (debt_collection_count / midwest_region)*1000000,
+    federal_student_loan_servicing_count_pc_midwest = (federal_student_loan_servicing_count / midwest_region)*1000000,
+    non_federal_student_loan_count_pc_midwest = (non_federal_student_loan_count / midwest_region)*1000000,
+    private_student_loan_count_pc_midwest = (private_student_loan_count / midwest_region)*1000000
+  )
+
+south_navient <- south_navient %>%
+  mutate(
+    student_loan_count_pc_south = (student_loan_count / south_region)*1000000,
+    credit_reporting_count_pc = (credit_reporting_count / south_region)*1000000,
+    debt_collection_count_pc = (debt_collection_count / south_region)*1000000,
+    federal_student_loan_servicing_count_pc_south = (federal_student_loan_servicing_count / south_region)*1000000,
+    non_federal_student_loan_count_pc_south = (non_federal_student_loan_count / south_region)*1000000,
+    private_student_loan_count_pc_south = (private_student_loan_count / south_region)*1000000
+  )
+    
+northeast_navient <- northeast_navient %>%
+  mutate(
+    student_loan_count_pc_northeast = (student_loan_count / northeast_region)*1000000,
+    credit_reporting_count_pc = (credit_reporting_count / northeast_region)*1000000,
+    debt_collection_count_pc = (debt_collection_count / northeast_region)*1000000,
+    federal_student_loan_servicing_count_pc_northeast = (federal_student_loan_servicing_count / northeast_region)*1000000,
+    non_federal_student_loan_count_pc_northeast = (non_federal_student_loan_count / northeast_region)*1000000,
+    private_student_loan_count_pc_northeast = (private_student_loan_count / northeast_region)*1000000
+  )
+```
+
+
+```{r}
+west_navient <- west_navient %>%
+  select(month, student_loan_count_pc_west, federal_student_loan_servicing_count_pc_west, non_federal_student_loan_count_pc_west, private_student_loan_count_pc_west)
+
+midwest_navient <- midwest_navient %>%
+  select(month, student_loan_count_pc_midwest, federal_student_loan_servicing_count_pc_midwest, non_federal_student_loan_count_pc_midwest, private_student_loan_count_pc_midwest)
+
+south_navient <- south_navient %>%
+  select(month, student_loan_count_pc_south, federal_student_loan_servicing_count_pc_south, non_federal_student_loan_count_pc_south, private_student_loan_count_pc_south)
+
+northeast_navient <- northeast_navient %>%
+  select(month, student_loan_count_pc_northeast, federal_student_loan_servicing_count_pc_northeast, non_federal_student_loan_count_pc_northeast, private_student_loan_count_pc_northeast)
+```
+
+```{r}
+library(purrr)
+
+# List of dataframes
+navient_dataframes <- list(west_navient, midwest_navient, south_navient, northeast_navient)
+
+# Merge dataframes by "month" column
+navient_month_region <- reduce(navient_dataframes, merge, by = "month")
+```
+
+```{r}
+total_student_loan_pc_navient <- navient_month_region %>%
+  select(month,
+         student_loan_count_pc_west,
+         student_loan_count_pc_midwest,
+         student_loan_count_pc_south,
+         student_loan_count_pc_northeast)
+```
+
+```{r}
+federal_student_loan_pc_navient <- navient_month_region %>%
+  select(month,
+         federal_student_loan_servicing_count_pc_west,
+         federal_student_loan_servicing_count_pc_midwest,
+         federal_student_loan_servicing_count_pc_south,
+         federal_student_loan_servicing_count_pc_northeast)
+
+
+private_student_loan_pc_navient <- navient_month_region %>%
+  select(month,
+         private_student_loan_count_pc_west,
+         private_student_loan_count_pc_midwest,
+         private_student_loan_count_pc_south,
+         private_student_loan_count_pc_northeast)
+```
+
+
+```{r}
+write_csv(total_student_loan_pc_navient, "datasets/total_student_loan_pc_navient.csv")
+write_csv(federal_student_loan_pc_navient, "datasets/federal_student_loan_pc_navient.csv")
+write_csv(private_student_loan_pc_navient, "datasets/private_student_loan_pc_navient.csv")
+```
+
