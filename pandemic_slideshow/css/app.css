@@ -1,0 +1,15 @@
+body {
+  font-family: "Garamond";
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+h1 {
+  font-size: 45px;
+  font-family: "Garamond";
+}
+
+h3 {
+  font-size: 20px;
+  font-family: "Garamond";
+}
