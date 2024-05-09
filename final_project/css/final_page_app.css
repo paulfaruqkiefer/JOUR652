@@ -83,9 +83,9 @@ figcaption {
 
 /* Callout Styles */
 .customCallout {
-  background-color: #888787;
+  background-color: ##87ceeb;
   font-size: 1.25rem;
-  color: #87ceeb;
+  color: #fff;
   font-weight: 600;
 }
 
